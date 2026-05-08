@@ -5,7 +5,7 @@ A basic intentionally vulnerable Flask application for testing SAST and SCA tool
 ## Files
 
 - `app.py` - vulnerable demo application
-- `requirements.txt` - Python dependencies, including an intentionally vulnerable package version for SCA testing
+- `requirements.txt` - Python dependencies for running the demo application
 - `tests/test_app.py` - focused tests that exercise the demo routes
 
 ## Run
