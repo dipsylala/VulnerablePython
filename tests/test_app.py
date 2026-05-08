@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from app import app, init_db
 
@@ -22,7 +23,7 @@ class VulnerableAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"<script>alert(1)</script>", response.data)
 
-    def test_login_sql_injection_payload_authenticates(self) -> None:
+    def test_login_sql_injection(self) -> None:
         response = self.client.post(
             "/login",
             data={"username": "admin' --", "password": "wrong-password"},
@@ -30,6 +31,28 @@ class VulnerableAppTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Welcome admin", response.data)
+
+    def test_ping_command_injection_input_reaches_shell(self) -> None:
+        with patch("app.subprocess.check_output", return_value="PING OK") as mock_ping:
+            response = self.client.get("/ping?host=127.0.0.1;whoami")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"PING OK", response.data)
+        mock_ping.assert_called_once_with(
+            "ping -c 1 127.0.0.1;whoami",
+            shell=True,
+            text=True,
+            stderr=-2,
+        )
+
+    def test_download_reads_arbitrary_path(self) -> None:
+        sample_file = Path(self.temp_dir.name) / "secret.txt"
+        sample_file.write_text("demo-secret")
+
+        response = self.client.get(f"/download?path={sample_file}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, b"demo-secret")
 
 
 if __name__ == "__main__":
